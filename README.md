@@ -105,6 +105,3 @@ cmake --build build/Debug
 
 Peripheral configuration is in `Iron_Dome.ioc` and edited with STM32CubeMX. Regenerating preserves everything inside the `USER CODE` markers.
 
-## Notes from the build
-
-Two dead servos out of seven, and a dead logic analyzer, cost most of a day early on. The lesson that stuck: measure at the destination, not the source. Voltage present at the rail is not voltage present at the connector, and a conclusion reached by eliminating everything else can still be wrong.
