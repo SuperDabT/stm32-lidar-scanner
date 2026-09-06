@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32f4xx_hal.h"
+#include "stm32f4xx_hal_tim.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -60,6 +62,7 @@ void servo_write(float angle, char axis);
 void servo_init(void);
 bool elapsed(uint32_t *last, uint32_t interval);
 int _write(int file,char *ptr, int len);
+void servo_home(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -100,7 +103,8 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	servo_init();
+	//servo_init();
+  servo_home();
 
   /* USER CODE END 2 */
 
@@ -129,7 +133,7 @@ int main(void)
 				pan_step = -pan_step;
 			}
 		}
-		if (elapsed(&tilt_last_move, 30)) {
+		if (elapsed(&tilt_last_move, 20)) {
 			servo_write(tilt_angle, 't');
 			tilt_angle += tilt_step;
 			if (tilt_angle >= TILT_MAX) {
@@ -225,6 +229,19 @@ void servo_init(void) {
 	servo_write(0.0f, 't');
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
+}
+void servo_home(void){ 
+  HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
+  servo_write(90.0f,'p' );
+  servo_write(90.0f,'t' );
+  HAL_Delay(500);
+  for(int angle=90;angle>=0;angle-=5){
+    servo_write(angle, 'p');
+    servo_write(angle, 't');
+    HAL_Delay(50);
+  }
+
 }
 bool elapsed(uint32_t *last, uint32_t interval) {
 	if (HAL_GetTick() - *last >= interval) {
