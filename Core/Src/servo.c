@@ -3,7 +3,7 @@
 #include "tim.h"
 
 
-void servo_home(void){ 
+void servo_init(void){ 
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
   servo_write(90.0f,'p' );

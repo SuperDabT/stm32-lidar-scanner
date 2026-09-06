@@ -5,5 +5,5 @@
 #define TILT_MIN 0.0f // TODO CHECK AFTER BRACKET ASSEMBLY
 #define TILT_MAX 120.0f // TODO CHECK AFTER BRACKET ASSEMBLY
 void servo_write(float angle,char axis);
-void servo_home(void);
+void servo_init(void);
 #endif
