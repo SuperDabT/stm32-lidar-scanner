@@ -28,6 +28,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <stdbool.h>
+#include "servo.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,10 +38,6 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-static const float PAN_MAX = 180.0f;
-static const float PAN_MIN = 0.0f;
-static const float TILT_MIN = 0.0f; // TODO CHECK AFTER BRACKET ASSEMBLY
-static const float TILT_MAX = 90.0f; // TODO CHECK AFTER BRACKET ASSEMBLY
 
 /* USER CODE END PD */
 
@@ -58,11 +55,8 @@ static const float TILT_MAX = 90.0f; // TODO CHECK AFTER BRACKET ASSEMBLY
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-void servo_write(float angle, char axis);
-void servo_init(void);
 bool elapsed(uint32_t *last, uint32_t interval);
 int _write(int file,char *ptr, int len);
-void servo_home(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -103,7 +97,6 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	//servo_init();
   servo_home();
 
   /* USER CODE END 2 */
@@ -205,44 +198,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void servo_write(float angle, char axis) {
-	if (axis != 'p' && axis != 't') {
-		return;
-	}
-	if ((axis == 'p') && (angle > PAN_MAX || angle < PAN_MIN)) {
-		return;
-	} else if ((axis == 't') && (angle > TILT_MAX || angle < TILT_MIN)) {
-		return;
-	}
-	uint32_t pulse_us;
-	pulse_us = 1000 + (angle / 180.0f) * 1000;
-
-	if (axis == 't') {
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse_us); //CH1/PA0 is tilt
-	} else if (axis == 'p') {
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, pulse_us); //CH2/PA1 is pan
-	}
-
-}
-void servo_init(void) {
-	servo_write(0.0f, 'p');
-	servo_write(0.0f, 't');
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-}
-void servo_home(void){ 
-  HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
-  HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
-  servo_write(90.0f,'p' );
-  servo_write(90.0f,'t' );
-  HAL_Delay(500);
-  for(int angle=90;angle>=0;angle-=5){
-    servo_write(angle, 'p');
-    servo_write(angle, 't');
-    HAL_Delay(50);
-  }
-
-}
 bool elapsed(uint32_t *last, uint32_t interval) {
 	if (HAL_GetTick() - *last >= interval) {
 		*last = HAL_GetTick();
