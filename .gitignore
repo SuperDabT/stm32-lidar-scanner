@@ -9,3 +9,6 @@ Release/
 *.elf
 *.bin
 *.list
+
+# Per-machine VS Code IntelliSense config (paths differ between Linux/Windows)
+.vscode/c_cpp_properties.json
