@@ -1,11 +1,12 @@
 #include "main.h"
+#include "stm32f4xx_hal_uart.h"
 #include "usart.h"
 #include "tfluna.h"
 
-static uint16_t last_distance=0;
-static bool last_valid= false;
+static volatile uint16_t last_distance=0;
+static volatile bool last_valid= false;
 static uint8_t rx_byte;
-static float last_temp=0.0f;
+static volatile float last_temp=0.0f;
 
 uint16_t tfluna_distance(void){
     return last_distance;
@@ -77,5 +78,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     if(huart->Instance==USART1){
         tfluna_feed(rx_byte);
         HAL_UART_Receive_IT(&huart1,&rx_byte,1);
+    }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
+    if(huart->Instance==USART1){
+        // Handle UART error
+        HAL_UART_Receive_IT(&huart1, &rx_byte, 1);
+
     }
 }
