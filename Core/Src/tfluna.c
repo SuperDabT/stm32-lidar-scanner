@@ -51,7 +51,7 @@ if(sum==frame[8]){
 
  
  last_distance=d;
- last_valid=(amp>=100 ) && (amp!=65535) && (d>=20) && (d<=800);
+ last_valid=(amp>=100 ) && (amp!=65535) && (d>=10) && (d<=800);
  last_temp= t_raw/ 8.0f-256.0f;
 
 }

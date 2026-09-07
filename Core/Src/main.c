@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stm32f4xx.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
@@ -96,57 +97,72 @@ int main(void)
   MX_USART2_UART_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  servo_init();
-  tfluna_init();
-
-  /* USER CODE END 2 */
+servo_init();
+tfluna_init();
+/* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		static uint32_t log_last=0;
+		static uint32_t log_last = 0;
 
-		static float pan_angle = 0.0f;
-		static float pan_step = 5.0f;
-		static uint32_t pan_last_move = 0;
+    static float pan_angle = 0.0f;
+    static float pan_step = 2.0f;
+    static uint32_t pan_last_move = 0;
 
-		static float tilt_angle = 0.0f;
-		static float tilt_step = 5.0f;
-		static uint32_t tilt_last_move = 0;
-		if (elapsed(&pan_last_move, 20)) {
-			servo_write(pan_angle, 'p');
-			if(elapsed(&log_last,250)){
-printf("pan %3d  tilt %3d  |  dist %4d cm  %s  |  %2d C\r\n",
-       (int)pan_angle,
-       (int)tilt_angle,
-       tfluna_distance(),
-       tfluna_valid() ? "ok " : "BAD",
-       (int)tfluna_temperature());}
-			pan_angle += pan_step;
-			if (pan_angle >= PAN_MAX) {
-				pan_step = -pan_step;
-			}
-			if (pan_angle <= PAN_MIN) {
-				pan_step = -pan_step;
-			}
+    static float tilt_angle = TILT_MAX;
+    static float tilt_step = -2.0f;
+    
+    bool reversed= false;
+
+
+    if (elapsed(&pan_last_move, 20)) {
+        servo_write(pan_angle, 'p');
+
+        if (elapsed(&log_last, 250)) {
+            printf("pan %3d  tilt %3d  |  dist %4d cm  %s  |  %2d C\r\n",
+                   (int)pan_angle,
+                   (int)tilt_angle,
+                   tfluna_distance(),
+                   tfluna_valid() ? "ok " : "BAD",
+                   (int)tfluna_temperature());
+        }
+
+        pan_angle += pan_step;
+        if (pan_angle >= PAN_MAX) {
+            pan_step = -pan_step;
+            reversed=true;
+        }
+        if (pan_angle <= PAN_MIN) {
+            pan_step = -pan_step;
+            reversed=true;
+        }
+        if(reversed){
+            
+            servo_write(tilt_angle, 't');
+            
+            tilt_angle += tilt_step;
+            if (tilt_angle >= TILT_MAX) {
+                tilt_step = -tilt_step;
+            }
+            if (tilt_angle <= TILT_MIN) {
+                tilt_step = -tilt_step;
+            }
+        
+        }
+        
+        }
 		}
-		if (elapsed(&tilt_last_move, 20)) {
-			servo_write(tilt_angle, 't');
-			tilt_angle += tilt_step;
-			if (tilt_angle >= TILT_MAX) {
-				tilt_step = -tilt_step;
-			}
-			if (tilt_angle <= TILT_MIN) {
-				tilt_step = -tilt_step;
-			}
-		}
+            
+  
 
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	}
+	
   /* USER CODE END 3 */
 }
+
 
 /**
   * @brief System Clock Configuration
