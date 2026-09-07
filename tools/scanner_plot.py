@@ -26,15 +26,19 @@ def update(frame):
     alphas = [1.0 - (now - p[2]) / 4.5 for p in points]
 
     ax.clear()
+    ax.set_facecolor('black')
+    ax.tick_params(colors='#04C334')
+    ax.grid(color='#04C334',alpha=0.3)
+    ax.spines['polar'].set_color('#04C334')
     ax.set_ylim(0, 500)
-    ax.scatter(angles, dists, s=4, alpha=alphas)
+    ax.scatter(angles, dists, s=4, alpha=alphas, color="#04C334")
     
 
 ser=  serial.Serial('COM3',115200,timeout=1)
 points= []
 
 
-fig= plt.figure()
-ax= fig.add_subplot(projection='polar')
+fig= plt.figure(facecolor='black')
+ax= fig.add_subplot(projection='polar',facecolor='black')
 ani=FuncAnimation(fig, update, interval=50)
 plt.show()
