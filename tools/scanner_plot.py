@@ -14,7 +14,10 @@ def update(frame):
         parts = line.split(',')
         if len(parts) != 5:
             continue
-        pan, tilt, dist, temp, valid = (int(p) for p in parts)
+        try:
+            pan, tilt, dist, temp, valid = (int(p) for p in parts)
+        except ValueError:
+            continue
         if not valid:
             continue
         points.append((math.radians(pan), dist, now))
