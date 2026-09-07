@@ -110,7 +110,7 @@ tfluna_init();
     static uint32_t pan_last_move = 0;
 
     static float tilt_angle = TILT_MAX;
-    static float tilt_step = -2.0f;
+    static float tilt_step = -3.0f;
     
     bool reversed= false;
 
