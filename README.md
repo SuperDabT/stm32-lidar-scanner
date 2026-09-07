@@ -6,11 +6,11 @@ Firmware in C using STM32 HAL, no RTOS. Host visualiser in Python.
 
 <!-- PHOTO: the assembled gimbal with the LiDAR mounted. Wide shot, whole rig visible. -->
 ![Assembled pan-tilt gimbal with TF-Luna mounted](rig.jpeg)
-*Nucleo-F446RE, buck converter and the pan-tilt gimbal with the TF-Luna mounted.*
+* Nucleo-F446RE, buck converter and the pan-tilt gimbal with the TF-Luna mounted.*
 
 <!-- SCREENSHOT: the radar plot running — green on black, mid-sweep with the fade visible. This is the money shot; put it high. -->
 ![the radar plot running — green on black, mid-sweep with the fade visible](radar.png)
-*Live polar plot: each point is a distance reading at its pan bearing, fading over 4.5 seconds so the current sweep stays bright.*
+* Live polar plot: each point is a distance reading at its pan bearing, fading over 4.5 seconds so the current sweep stays bright.*
 
 ## Status
 
