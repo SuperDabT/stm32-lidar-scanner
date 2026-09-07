@@ -104,7 +104,6 @@ tfluna_init();
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	while (1) {
-		static uint32_t log_last = 0;
 
     static float pan_angle = 0.0f;
     static float pan_step = 2.0f;
@@ -118,15 +117,14 @@ tfluna_init();
 
     if (elapsed(&pan_last_move, 20)) {
         servo_write(pan_angle, 'p');
+        printf("%d,%d,%d,%d,%d\r\n",
+          (int)pan_angle,
+          (int)tilt_angle,
+          tfluna_distance(),
+          (int)tfluna_temperature(),
+          tfluna_valid());
 
-        if (elapsed(&log_last, 250)) {
-            printf("pan %3d  tilt %3d  |  dist %4d cm  %s  |  %2d C\r\n",
-                   (int)pan_angle,
-                   (int)tilt_angle,
-                   tfluna_distance(),
-                   tfluna_valid() ? "ok " : "BAD",
-                   (int)tfluna_temperature());
-        }
+        
 
         pan_angle += pan_step;
         if (pan_angle >= PAN_MAX) {
