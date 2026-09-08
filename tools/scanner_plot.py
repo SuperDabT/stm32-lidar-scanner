@@ -70,9 +70,8 @@ ax.grid(color='#04C334', alpha=0.2, linewidth=0.6)
 ax.spines['polar'].set_color('#04C334')
 ax.spines['polar'].set_alpha(0.6)
 
-# Pan only sweeps 0-180, so drop the unused half of the disc.
 ax.set_thetamin(0)
-ax.set_thetamax(180)
+ax.set_thetamax(360)
 ax.set_ylim(0, 300)
 ax.set_rlabel_position(135)
 
