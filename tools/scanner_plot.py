@@ -72,7 +72,7 @@ ax.spines['polar'].set_alpha(0.6)
 
 ax.set_thetamin(0)
 ax.set_thetamax(360)
-ax.set_ylim(0, 300)
+ax.set_ylim(0, 400)
 ax.set_rlabel_position(135)
 
 # Created once, empty. glow first so it draws underneath core.
