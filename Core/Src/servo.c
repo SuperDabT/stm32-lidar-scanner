@@ -22,7 +22,7 @@ void servo_write(float angle, char axis) {
 		return;
 	}
 	uint32_t pulse_us;
-	pulse_us = 1000 + (angle / 180.0f) * 1000;
+	pulse_us = SERVO_MIN_US+ (angle/ SERVO_RANGE_DEG) * (SERVO_MAX_US-SERVO_MIN_US);
 
 	if (axis == 't') {
 		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse_us); //CH1/PA0 is tilt
