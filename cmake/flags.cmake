@@ -14,7 +14,6 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -O0
         -Wall
         -fstack-usage
-        -fcyclomatic-complexity
       >
       $<$<COMPILE_LANGUAGE:CXX>: 
         --specs=nano.specs
@@ -24,7 +23,6 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -fno-use-cxa-atexit
         -Wall
         -fstack-usage
-        -fcyclomatic-complexity
       >
 
       $<$<COMPILE_LANGUAGE:ASM>: 
@@ -43,7 +41,6 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -Os
         -Wall
         -fstack-usage
-        -fcyclomatic-complexity
       >
       $<$<COMPILE_LANGUAGE:CXX>: 
         --specs=nano.specs
@@ -52,7 +49,6 @@ target_compile_options(${PROJECT_NAME} PUBLIC
         -fno-use-cxa-atexit
         -Wall
         -fstack-usage
-        -fcyclomatic-complexity
       >
 
       $<$<COMPILE_LANGUAGE:ASM>: 
