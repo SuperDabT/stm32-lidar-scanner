@@ -7,7 +7,7 @@ void servo_init(void){
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
   servo_write(0.0f,'p' );
-  servo_write(130.0f,'t' );
+  servo_write(115.0f,'t' );
   HAL_Delay(500);
  
 
