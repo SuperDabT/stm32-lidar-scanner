@@ -112,9 +112,12 @@ tfluna_init();
     /* Static so they survive between iterations. The loop body runs
        thousands of times a second; the timed block inside is what actually
        steps the scan. */
+    
+    static bool halted=false;
     static float    pan_angle     = 0.0f;
     static float    pan_step      = 2.0f;
     static uint32_t pan_last_move = 0;
+    static uint32_t warn_last=0;
 
     static float tilt_angle = TILT_MAX;
     static float tilt_step  = -3.0f;
@@ -128,7 +131,28 @@ tfluna_init();
        direction: 40 ms gives 6 degrees of split, 45 gives 4, 50 gives 2,
        65 gives none. 50 is the fastest interval holding the split within
        one 2-degree step, which is the floor either way. */
+    
+    /* Two thresholds, not one. The TF-Luna's ceiling is 60 C and it runs
+         43-52 in normal operation, so a single threshold would flap on and
+         off at the boundary. Trips at 60, clears at 50; between the two it
+         holds whatever state it's in. */
+
+    
     if (elapsed(&pan_last_move, 50)) {
+      if(tfluna_temperature()>=42.0f){
+        halted=true;
+    }
+    if(tfluna_temperature()<=40.0f){
+      halted=false;
+    }
+    
+    if (halted){
+      if (elapsed(&warn_last, 1000)){
+      printf("WARNING: TF-Luna at %d C, SCANNING HALTED\r\n",
+      (int)tfluna_temperature());
+    }
+  }
+    else{
 
         /* Report before commanding. At this point pan_angle is still the
            angle the head has been parked at for the last 50 ms, so the
@@ -173,12 +197,15 @@ tfluna_init();
             }
         }
     }
+  }
 	}
+
+
             
   
 
     /* USER CODE END WHILE */
-
+    
     /* USER CODE BEGIN 3 */
 	
   /* USER CODE END 3 */
