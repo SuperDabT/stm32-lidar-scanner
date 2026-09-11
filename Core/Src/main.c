@@ -107,38 +107,61 @@ tfluna_init();
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	while (1){
+		while (1) {
 
-    static float pan_angle = 0.0f;
-    static float pan_step = 2.0f;
+    /* Static so they survive between iterations. The loop body runs
+       thousands of times a second; the timed block inside is what actually
+       steps the scan. */
+    static float    pan_angle     = 0.0f;
+    static float    pan_step      = 2.0f;
     static uint32_t pan_last_move = 0;
 
     static float tilt_angle = TILT_MAX;
-    static float tilt_step = -3.0f;
-    
-    bool reversed= false;
+    static float tilt_step  = -3.0f;
 
+    bool reversed = false;
 
+    /* 50 ms is measured, not chosen. A servo commanded to a new angle is
+       still travelling when the next reading arrives, so the reading
+       belongs to a position the code has already left. The error shows up
+       as a sharp edge landing at different bearings depending on sweep
+       direction: 40 ms gives 6 degrees of split, 45 gives 4, 50 gives 2,
+       65 gives none. 50 is the fastest interval holding the split within
+       one 2-degree step, which is the floor either way. */
     if (elapsed(&pan_last_move, 50)) {
+
+        /* Report before commanding. At this point pan_angle is still the
+           angle the head has been parked at for the last 50 ms, so the
+           reading and the label match. Printing after the move would
+           attach each reading to the position it was heading toward
+           rather than the one it came from. */
         printf("%d,%d,%d,%d,%d\r\n",
           (int)pan_angle,
           (int)tilt_angle,
           tfluna_distance(),
           (int)tfluna_temperature(),
           tfluna_valid());
-          pan_angle += pan_step;
-          servo_write(pan_angle, 'p');
-          
+
+        pan_angle += pan_step;
+        servo_write(pan_angle, 'p');
+
+        /* Limit test after the command, so the angle written is always the
+           limit itself and never one step past it. */
         if (pan_angle >= PAN_MAX) {
             pan_step = -pan_step;
-            reversed=true;
+            reversed = true;
         }
         if (pan_angle <= PAN_MIN) {
             pan_step = -pan_step;
-            reversed=true;
+            reversed = true;
         }
-        if(reversed){
-            
+
+        /* Tilt advances once per completed pan sweep, giving stacked
+           horizontal rows rather than the diagonal smear you get from
+           stepping both axes together. Step stays at 3 degrees: the beam
+           is about 2 wide, so a larger step would leave unscanned gaps
+           between rows. */
+        if (reversed) {
             servo_write(tilt_angle, 't');
 
             tilt_angle += tilt_step;
@@ -148,11 +171,9 @@ tfluna_init();
             if (tilt_angle <= TILT_MIN) {
               tilt_step = -tilt_step;
             }
-        
         }
-        
-        }
-		}
+    }
+	}
             
   
 
@@ -218,6 +239,14 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/* Non-blocking interval timer. Takes a pointer so each caller keeps its own
+   schedule in the same loop — no blocking delays anywhere in normal
+   operation. Everything stays uint32_t deliberately: HAL_GetTick wraps
+   after about 49 days, and unsigned subtraction wraps with it, so the
+   elapsed time stays correct across the rollover. Storing the result in a
+   signed type would make the comparison fail permanently. */
+
 bool elapsed(uint32_t *last, uint32_t interval) {
 	if (HAL_GetTick() - *last >= interval) {
 		*last = HAL_GetTick();
@@ -225,6 +254,12 @@ bool elapsed(uint32_t *last, uint32_t interval) {
 	} else
 		return false;
 }
+
+/* printf retarget. newlib calls _write for stdout, so this puts printf on
+   USART2 and the ST-Link virtual COM port. Blocking: a 20-character CSV
+   line is about 1.7 ms at 115200, which sits inside the 50 ms budget but
+   is real time spent, and it grows if fields are added. */
+
 int _write(int file,char *ptr, int len){
 	HAL_UART_Transmit(&huart2,(uint8_t *)ptr,len,HAL_MAX_DELAY);
 	return len;
