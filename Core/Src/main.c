@@ -134,15 +134,15 @@ tfluna_init();
     
     /* Two thresholds, not one. The TF-Luna's ceiling is 60 C and it runs
          43-52 in normal operation, so a single threshold would flap on and
-         off at the boundary. Trips at 60, clears at 50; between the two it
+         off at the boundary. Trips at 60, clears at 55; between the two it
          holds whatever state it's in. */
 
     
     if (elapsed(&pan_last_move, 50)) {
-      if(tfluna_temperature()>=42.0f){
+      if(tfluna_temperature()>=60.0f){
         halted=true;
     }
-    if(tfluna_temperature()<=40.0f){
+    if(tfluna_temperature()<=55.0f){
       halted=false;
     }
     
@@ -190,10 +190,13 @@ tfluna_init();
 
             tilt_angle += tilt_step;
             if (tilt_angle >= TILT_MAX) {
+              tilt_angle=TILT_MAX;
               tilt_step = -tilt_step;
             }
             if (tilt_angle <= TILT_MIN) {
+              tilt_angle=TILT_MIN;
               tilt_step = -tilt_step;
+
             }
         }
     }
