@@ -18,13 +18,14 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f4xx.h"
+#include "stm32f4xx_hal.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include "servo.h"
@@ -38,6 +39,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define SCAN_DWELL_MS      50      // Servo settle time before next reading
+#define TEMP_TRIP_C        60.0f   // Halt scanning at or above this
+#define TEMP_CLEAR_C       55.0f   // Resume scanning at or below this
+#define WARN_INTERVAL_MS   1000    // How often to print the halt warning
 
 /* USER CODE END PD */
 
@@ -138,16 +143,16 @@ tfluna_init();
          holds whatever state it's in. */
 
     
-    if (elapsed(&pan_last_move, 50)) {
-      if(tfluna_temperature()>=60.0f){
+    if (elapsed(&pan_last_move, SCAN_DWELL_MS)) {
+      if(tfluna_temperature()>=TEMP_TRIP_C){
         halted=true;
     }
-    if(tfluna_temperature()<=55.0f){
+    if(tfluna_temperature()<=TEMP_CLEAR_C){
       halted=false;
     }
     
     if (halted){
-      if (elapsed(&warn_last, 1000)){
+      if (elapsed(&warn_last, WARN_INTERVAL_MS)){
       printf("WARNING: TF-Luna at %d C, SCANNING HALTED\r\n",
       (int)tfluna_temperature());
     }
@@ -278,8 +283,9 @@ void SystemClock_Config(void)
    signed type would make the comparison fail permanently. */
 
 bool elapsed(uint32_t *last, uint32_t interval) {
-	if (HAL_GetTick() - *last >= interval) {
-		*last = HAL_GetTick();
+  uint32_t now_ms=HAL_GetTick();
+	if (now_ms - *last >= interval) {
+		*last = now_ms;
 		return true;
 	} else
 		return false;
@@ -291,7 +297,7 @@ bool elapsed(uint32_t *last, uint32_t interval) {
    is real time spent, and it grows if fields are added. */
 
 int _write(int file,char *ptr, int len){
-	HAL_UART_Transmit(&huart2,(uint8_t *)ptr,len,HAL_MAX_DELAY);
+	HAL_UART_Transmit(&huart2,(uint8_t *)ptr,len,5);
 	return len;
 }
 /* USER CODE END 4 */
