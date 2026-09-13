@@ -119,7 +119,7 @@ tfluna_init();
     static uint32_t pan_last_move = 0;
     static uint32_t warn_last=0;
 
-    static float tilt_angle = TILT_MAX;
+    static float tilt_angle = SCAN_TILT_MAX;
     static float tilt_step  = -3.0f;
 
     bool reversed = false;
@@ -189,12 +189,12 @@ tfluna_init();
             servo_write(tilt_angle, 't');
 
             tilt_angle += tilt_step;
-            if (tilt_angle >= TILT_MAX) {
-              tilt_angle=TILT_MAX;
+            if (tilt_angle >= SCAN_TILT_MAX) {
+              tilt_angle=SCAN_TILT_MAX;
               tilt_step = -tilt_step;
             }
-            if (tilt_angle <= TILT_MIN) {
-              tilt_angle=TILT_MIN;
+            if (tilt_angle <= SCAN_TILT_MIN) {
+              tilt_angle=SCAN_TILT_MIN;
               tilt_step = -tilt_step;
 
             }
