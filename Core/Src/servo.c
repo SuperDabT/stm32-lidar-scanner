@@ -7,7 +7,7 @@ void servo_init(void){
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
   servo_write(0.0f,'p' );
-  servo_write(115.0f,'t' );  /* 115 is level */
+  servo_write(TILT_LEVEL,'t' );  /* 111.3 is level */
   HAL_Delay(500);  /* let both axes reach home before scanning */
  
 
