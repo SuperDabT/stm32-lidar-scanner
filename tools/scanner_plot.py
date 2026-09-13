@@ -10,6 +10,9 @@ from matplotlib.animation import FuncAnimation
 from serial.tools import list_ports
 
 REPLAY_ROWS_PER_FRAME = 2
+RMAX_CM=500    # Plot ceiling. TF-Luna reaches 800cm, but nothing in this
+               # project's actual use range goes past ~400 — 500 leaves margin
+               # without wasting most of the chart on empty space.
 
 def load_csv(path):
     rows= []
@@ -113,7 +116,7 @@ ax.spines['polar'].set_color('#04C334')
 ax.spines['polar'].set_alpha(0.6)
 ax.set_thetamin(0)
 ax.set_thetamax(360)
-ax.set_ylim(0, 400)
+ax.set_ylim(0, RMAX_CM)
 ax.set_rlabel_position(135)
 # Created once, empty. glow first so it draws underneath core.
 glow = ax.scatter([], [], s=60, color='#04C334', edgecolors='none')
