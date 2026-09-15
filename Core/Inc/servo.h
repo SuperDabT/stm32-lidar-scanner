@@ -8,7 +8,7 @@
 /* Pan is expressed in TRUE BEARINGS, not servo commands — 90 is straight
    ahead along the base's forward axis. servo_write adds the offset. */
 #define PAN_OFFSET_DEG 15.0f
-#define PAN_MAX 180.0f /* True 165 -> command 180. Beyond this the servo stalls at its stop and the CSV records bearings the head never reached. */
+#define PAN_MAX 180.0f /* True 180 -> command 180. 
 #define PAN_MIN 0.0f /* True 0 -> command 15. */
 
 #define TILT_MIN   89.0f   /* 22 deg above level. */
