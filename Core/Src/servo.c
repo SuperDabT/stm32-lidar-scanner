@@ -7,7 +7,7 @@ void servo_init(void){
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
   servo_write(0.0f,'p' );
-  servo_write(TILT_LEVEL,'t' );  /* 111.3 is level */
+  servo_write(TILT_LEVEL,'t' );  
   HAL_Delay(500);  /* let both axes reach home before scanning */
  
 
@@ -23,6 +23,10 @@ void servo_write(float angle, char axis) {
 		return;
 	} else if ((axis == 't') && (angle > TILT_MAX || angle < TILT_MIN)) {
 		return;
+	}
+
+	if(axis=='p'){
+		angle+=PAN_OFFSET_DEG;
 	}
 
 	/* TIM2 is prescaled to 1 MHz, so one timer tick is one microsecond and
