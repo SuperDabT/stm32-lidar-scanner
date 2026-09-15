@@ -44,6 +44,8 @@
 #define TEMP_CLEAR_C       55.0f   // Resume scanning at or below this
 #define WARN_INTERVAL_MS   1000    // How often to print the halt warning
 
+#define PAN_STEP_DEG 2.0f
+#define TILT_STEP_DEG -3.0f
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -120,12 +122,12 @@ tfluna_init();
     
     static bool halted=false;
     static float    pan_angle     = 0.0f;
-    static float    pan_step      = 2.0f;
+    static float    pan_step      = PAN_STEP_DEG;
     static uint32_t pan_last_move = 0;
     static uint32_t warn_last=0;
 
-    static float tilt_angle = SCAN_TILT_MAX;
-    static float tilt_step  = -3.0f;
+    static float tilt_angle = TILT_LEVEL;
+    static float tilt_step  = TILT_STEP_DEG;
 
     bool reversed = false;
 
@@ -144,17 +146,18 @@ tfluna_init();
 
     
     if (elapsed(&pan_last_move, SCAN_DWELL_MS)) {
-      if(tfluna_temperature()>=TEMP_TRIP_C){
+      float temp_c=tfluna_temperature();
+      if(temp_c>=TEMP_TRIP_C){
         halted=true;
     }
-    if(tfluna_temperature()<=TEMP_CLEAR_C){
+    if(temp_c<=TEMP_CLEAR_C){
       halted=false;
     }
     
     if (halted){
       if (elapsed(&warn_last, WARN_INTERVAL_MS)){
       printf("WARNING: TF-Luna at %d C, SCANNING HALTED\r\n",
-      (int)tfluna_temperature());
+      (int)temp_c);
     }
   }
     else{
@@ -168,7 +171,7 @@ tfluna_init();
           (int)pan_angle,
           (int)tilt_angle,
           tfluna_distance(),
-          (int)tfluna_temperature(),
+          (int)temp_c,
           tfluna_valid());
 
         pan_angle += pan_step;
@@ -190,20 +193,20 @@ tfluna_init();
            stepping both axes together. Step stays at 3 degrees: the beam
            is about 2 wide, so a larger step would leave unscanned gaps
            between rows. */
-        if (reversed) {
-            servo_write(tilt_angle, 't');
+        // if (reversed) {
+        //     servo_write(tilt_angle, 't');
 
-            tilt_angle += tilt_step;
-            if (tilt_angle >= SCAN_TILT_MAX) {
-              tilt_angle=SCAN_TILT_MAX;
-              tilt_step = -tilt_step;
-            }
-            if (tilt_angle <= SCAN_TILT_MIN) {
-              tilt_angle=SCAN_TILT_MIN;
-              tilt_step = -tilt_step;
+        //     tilt_angle += tilt_step;
+        //     if (tilt_angle >= SCAN_TILT_MAX) {
+        //       tilt_angle=SCAN_TILT_MAX;
+        //       tilt_step = -tilt_step;
+        //     }
+        //     if (tilt_angle <= SCAN_TILT_MIN) {
+        //       tilt_angle=SCAN_TILT_MIN;
+        //       tilt_step = -tilt_step;
 
-            }
-        }
+        //     }
+        // }
     }
   }
 	}
