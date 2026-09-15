@@ -126,7 +126,7 @@ tfluna_init();
     static uint32_t pan_last_move = 0;
     static uint32_t warn_last=0;
 
-    static float tilt_angle = TILT_LEVEL;
+    static float tilt_angle = SCAN_TILT_MAX;
     static float tilt_step  = TILT_STEP_DEG;
 
     bool reversed = false;
@@ -193,20 +193,20 @@ tfluna_init();
            stepping both axes together. Step stays at 3 degrees: the beam
            is about 2 wide, so a larger step would leave unscanned gaps
            between rows. */
-        // if (reversed) {
-        //     servo_write(tilt_angle, 't');
+        if (reversed) {
+            servo_write(tilt_angle, 't');
 
-        //     tilt_angle += tilt_step;
-        //     if (tilt_angle >= SCAN_TILT_MAX) {
-        //       tilt_angle=SCAN_TILT_MAX;
-        //       tilt_step = -tilt_step;
-        //     }
-        //     if (tilt_angle <= SCAN_TILT_MIN) {
-        //       tilt_angle=SCAN_TILT_MIN;
-        //       tilt_step = -tilt_step;
+            tilt_angle += tilt_step;
+            if (tilt_angle >= SCAN_TILT_MAX) {
+              tilt_angle=SCAN_TILT_MAX;
+              tilt_step = -tilt_step;
+            }
+            if (tilt_angle <= SCAN_TILT_MIN) {
+              tilt_angle=SCAN_TILT_MIN;
+              tilt_step = -tilt_step;
 
-        //     }
-        // }
+            }
+        }
     }
   }
 	}
