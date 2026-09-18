@@ -44,8 +44,7 @@
 #define TEMP_CLEAR_C       55.0f   // Resume scanning at or below this
 #define WARN_INTERVAL_MS   1000    // How often to print the halt warning
 
-#define PAN_STEP_DEG 2.0f
-#define TILT_STEP_DEG -3.0f
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
