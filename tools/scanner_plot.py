@@ -117,7 +117,7 @@ ax.spines['polar'].set_alpha(0.6)
 ax.set_thetamin(0)
 ax.set_thetamax(360)
 ax.set_ylim(0, RMAX_CM)
-ax.set_rlabel_position(135)
+ax.set_rlabel_position(135) 
 # Created once, empty. glow first so it draws underneath core.
 glow = ax.scatter([], [], s=60, color='#04C334', edgecolors='none')
 core = ax.scatter([], [], s=6,  color='#39FF6A', edgecolors='none')
