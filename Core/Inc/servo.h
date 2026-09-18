@@ -7,8 +7,8 @@
 
 /* Pan is expressed in TRUE BEARINGS, not servo commands — 90 is straight
    ahead along the base's forward axis. servo_write adds the offset. */
-#define PAN_OFFSET_DEG 15.0f
-#define PAN_MAX 180.0f /* True 180 -> command 180. 
+#define PAN_OFFSET_DG 15.0f
+#define PAN_MAX 165.0f /* 180+15 causes for overheating therefore 165 redemmed to be the safer option. 
 #define PAN_MIN 0.0f /* True 0 -> command 15. */
 
 #define TILT_MIN   89.0f   /* 22 deg above level. */
