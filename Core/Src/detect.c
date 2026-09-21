@@ -6,10 +6,19 @@
 
 #define PAN_SLOTS (((int)(PAN_MAX-PAN_MIN) / (int)PAN_STEP_DEG) + 1)
 #define BASELINE_SWEEPS 3
+#define MIN_DROP_CM 40
 
 static uint16_t background[PAN_SLOTS][BASELINE_SWEEPS];
 static uint16_t baseline[PAN_SLOTS];
 static uint8_t sweep_counter=0;
+
+static uint16_t first_bearing;
+static uint16_t last_bearing;
+static uint16_t first_dist;
+static uint16_t last_dist;
+static uint8_t readings_count=0;
+static uint16_t min_dist;
+
 
 static bool calibrating=true
 
@@ -51,6 +60,26 @@ void detect_feed(uint16_t bearing, uint16_t distance){
     }
         background[slot][sweep_counter]=distance;
     }
+    else {
+    if (distance+MIN_DROP_CM<baseline[slot]){
+        if(readings_count==0){
+            first_bearing=bearing;
+            first_dist=distance;
+            min_dist=first_dist;
+        }
+        last_bearing=bearing;
+        last_dist=distance;
+    if(distance<min_dist){
+    min_dist=distance;
+    }
+    readings_count++;
+
+    } 
+    else
+    {
+
+    }
+    }
 }
 
 void detect_sweep_end(void){
@@ -63,5 +92,6 @@ void detect_sweep_end(void){
     }
     calibrating=false;
     }
-    }
+    
+}
 }
