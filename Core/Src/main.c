@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "detect.h"
 #include "stm32f4xx_hal.h"
 #include "tim.h"
 #include "usart.h"
@@ -30,6 +31,7 @@
 #include <stdbool.h>
 #include "servo.h"
 #include "tfluna.h"
+#include "detect.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,6 +106,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 servo_init();
+HAL_Delay(10000); 
 tfluna_init();
 
 
@@ -125,7 +128,7 @@ tfluna_init();
     static uint32_t pan_last_move = 0;
     static uint32_t warn_last=0;
 
-    static float tilt_angle = SCAN_TILT_MAX;
+    static float tilt_angle = TILT_LEVEL;
     static float tilt_step  = TILT_STEP_DEG;
 
     bool reversed = false;
@@ -161,6 +164,10 @@ tfluna_init();
   }
     else{
 
+      uint16_t distance=tfluna_distance();
+      bool valid=tfluna_valid();
+
+
         /* Report before commanding. At this point pan_angle is still the
            angle the head has been parked at for the last 50 ms, so the
            reading and the label match. Printing after the move would
@@ -169,9 +176,17 @@ tfluna_init();
         printf("%d,%d,%d,%d,%d\r\n",
           (int)pan_angle,
           (int)tilt_angle,
-          tfluna_distance(),
+          distance,
           (int)temp_c,
-          tfluna_valid());
+          valid);
+
+
+
+        if (valid) {
+
+          
+          detect_feed((int)pan_angle, distance);
+        }
 
         pan_angle += pan_step;
         servo_write(pan_angle, 'p');
@@ -192,19 +207,32 @@ tfluna_init();
            stepping both axes together. Step stays at 3 degrees: the beam
            is about 2 wide, so a larger step would leave unscanned gaps
            between rows. */
-        if (reversed) {
-            servo_write(tilt_angle, 't');
+        // if (reversed) {
+        //     servo_write(tilt_angle, 't');
 
-            tilt_angle += tilt_step;
-            if (tilt_angle >= SCAN_TILT_MAX) {
-              tilt_angle=SCAN_TILT_MAX;
-              tilt_step = -tilt_step;
-            }
-            if (tilt_angle <= SCAN_TILT_MIN) {
-              tilt_angle=SCAN_TILT_MIN;
-              tilt_step = -tilt_step;
+        //     tilt_angle += tilt_step;
+        //     if (tilt_angle >= SCAN_TILT_MAX) {
+        //       tilt_angle=SCAN_TILT_MAX;
+        //       tilt_step = -tilt_step;
+        //     }
+        //     if (tilt_angle <= SCAN_TILT_MIN) {
+        //       tilt_angle=SCAN_TILT_MIN;
+        //       tilt_step = -tilt_step;
 
-            }
+        //     }
+        // }
+        if(reversed){
+          detect_sweep_end();
+          detection_t detections[MAX_OBJECTS];
+          uint8_t sus_objects;
+
+          sus_objects=detect_result(detections, MAX_OBJECTS);
+
+          for(uint8_t i=0;i<sus_objects;i++){
+            printf("DET,%d,%d\r\n",
+            (int)detections[i].bearing,
+            detections[i].distance);
+          }
         }
     }
   }
