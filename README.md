@@ -1,6 +1,8 @@
 # stm32-lidar-scanner
 
-A two-axis pan-tilt LiDAR scanner on an STM32F446RE Nucleo. Two servos sweep a TF-Luna time-of-flight rangefinder in a raster pattern; the board tags every distance reading with the angle it was taken at and streams the result to a PC, which draws it as a live radar display.
+A two-axis pan-tilt LiDAR scanner on an STM32F446RE Nucleo. Two servos sweep a TF-Luna time-of-flight rangefinder across a room; the board tags every distance reading with the angle it was taken at, learns what the empty room looks like, and reports anything that wasn't there before — on the board, with no PC in the loop. A PC can listen in and draw the scan as a live radar display.
+
+The goal is a tracker: find a person, turn the head to follow them, and recover when it loses them.
 
 Firmware in C on STM32 HAL, no RTOS. Host visualiser in Python.
 
@@ -15,19 +17,21 @@ Firmware in C on STM32 HAL, no RTOS. Host visualiser in Python.
 **Working**
 
 - Dual-axis servo control from one timer, 50 Hz PWM, verified on a logic analyzer
-- Raster scan: pan sweeps continuously, tilt advances one step per sweep
 - Non-blocking scheduler — both axes and the sensor run on independent intervals in a single main loop
 - TF-Luna driver: interrupt-driven UART receive, sync-word frame parser, checksum validation, error recovery
-- Calibrated angles — commanded degrees match measured degrees across the full pan range
-- CSV telemetry over USART2
-- Live polar plot in Python, cross-platform, with time-based fade
+- Calibrated geometry — pulse range, pan zero offset and tilt level all measured, not assumed
+- Sensor temperature guard with hysteresis
+- **Person detection running on the board** — self-calibrating empty-room baseline, background subtraction, candidates reported every sweep. Verified live against recorded captures (see [Detection](#detection))
+- Python prototype of the detector, replayed against recorded captures
+- CSV telemetry over USART2, live polar plot in Python
 
 **Next**
 
-- Object detection from scan data
-- Closed-loop tracking with PID
+- Tracking state machine (searching / tracking / coasting), scanning only near the target while tracking
+- Kalman filter on Cartesian x/y, then the PID controller (written and tested off-target, not yet connected)
+- Object width in real centimetres, to reject things that aren't person-sized
+- UART command interface: recalibrate, point at a bearing, status
 - FreeRTOS migration
-- Heatmap view for full 3D scans
 
 ## Hardware
 
@@ -55,8 +59,8 @@ Firmware in C on STM32 HAL, no RTOS. Host visualiser in Python.
 
 | Axis | Range | Notes |
 |---|---|---|
-| Pan | 0–180 | Full travel, verified linear, no measurable offset |
-| Tilt | 80–115 | 115 is level, lower numbers point up. Mechanical headroom to 150 (downward) unused — a downward beam returns mostly floor |
+| Pan | 0–165 (true bearing) | 90 is straight ahead. Command = bearing + 15. Linear across the range. Held to 165 because bearing 180 is command 195, past the calibrated pulse range, and the servo heated pushing against its stop |
+| Tilt | 89–125 | 111 is level, lower numbers point up. Fixed at level during detection |
 
 ## How it works
 
@@ -80,11 +84,20 @@ Calibration checked three things:
 
 - **Range** — commanding 0 and 180 should put the beam on a straight line through the pivot. At 500–2500 µs it does.
 - **Linearity** — 90 must land midway between the endpoints, or no single scale factor can be correct.
-- **Offset** — a flat surface set square to the base, swept across; the minimum distance marks the perpendicular. It falls at pan 90, so the servo's zero agrees with the chassis.
+- **Offset** — the servo's zero does not agree with the chassis. Command 105 points straight along the base's forward axis, measured with a straightedge against the square base and checked by a second person. `servo_write` adds the 15° internally, so everything above it — scan loop, telemetry, detection — works in true bearings where 90 is straight ahead. (A sweep across a flat wall fits the wall to within 1.5 cm RMS and finds its perpendicular to a tenth of a degree, but only tells you the offset if the wall is known to be square to the base; this one wasn't, which is why the final number came from the straightedge.)
+
+### Tilt level
+
+The original notes said tilt 115 was level. It wasn't: a target at 170 cm read 126 cm, because the beam was angled down into the floor before reaching it. Level was re-measured two independent ways against a wall 344 cm away, with the lens 74.7 cm above the floor:
+
+- **Shortest reading.** A level beam takes the shortest path to a wall, so wall distance is smallest at level. The minimum sits at tilt 111, rising on both sides.
+- **Floor knee.** Tilting down, the beam starts hitting floor before the wall between commands 123 and 124. `atan(74.7 / 344)` puts that 12.2° below level, which gives level at 111.3.
+
+Both give 111, and command units map 1:1 to degrees. 115 had been pointing 4° down.
 
 ### Scan pattern
 
-Pan steps 2° every 50 ms across its range. At either limit it reverses and tilt advances 3°, giving stacked horizontal rows rather than the diagonal smear you get from stepping both axes independently. A pan sweep takes about 4.5 seconds; a full raster over the 35° tilt range is 12 rows, roughly a minute.
+Pan steps 2° every 50 ms across its range, about 4 seconds per sweep, reversing at either limit. For detection the tilt is held at level, so every sweep is the same horizontal slice of the room and can be compared against a baseline. The firmware can also raster — advancing tilt 3° at each reversal for stacked horizontal rows — but that's switched off while detecting.
 
 The 50 ms dwell is measured, not guessed. A servo commanded to a new angle is still moving when the next reading arrives, so the reading belongs to a position the code has already left. The size of that error is visible in the data: a sharp edge in the scene lands at different bearings depending on sweep direction, and the split is the lag doubled.
 
@@ -111,6 +124,8 @@ Two header bytes rather than one, because `0x59` occurs in real data: a distance
 
 A reading is rejected when amplitude is below 100, when amplitude reads 65535 (overexposure), or when distance falls outside the sensor's trustworthy range. A distance of 0 means the sensor could not measure, not that nothing is there.
 
+The sensor's temperature is watched too. Its ceiling is 60 °C and it normally runs 43–52 °C, so scanning halts at 60 and resumes at 55 — two thresholds rather than one, so it doesn't flap on and off at the boundary. While halted, the telemetry prints a warning once a second instead of going quiet, so the stream says why it stopped.
+
 UART errors get their own callback. An overrun or framing error aborts the receive, and without re-arming it the sensor goes silent until reset — a failure that looks like dead hardware. The parser resynchronises on the next header by itself.
 
 <!-- SCREENSHOT: logic analyzer UART decode showing 59 59 and a decoded frame. -->
@@ -127,6 +142,39 @@ It takes a pointer so it can update the caller's timestamp, letting each timed a
 
 Readings are emitted before the next move is commanded, so each one carries the angle the head was actually sitting at rather than the angle it was heading toward.
 
+### Detection
+
+Detection lives in `detect.c` and has two phases.
+
+**Calibrating.** At power-up the room must be empty (there's a 10-second delay to leave). Three sweeps are recorded, and the median of the three readings at each angle becomes the baseline — the "before photo" of the room. Three because the median of an even count averages the middle two, so one bad reading blends in instead of being outvoted; three is the smallest count that protects you.
+
+**Watching.** Each new reading is compared to the baseline at its angle. A reading at least 40 cm closer than the empty room is "something there." Consecutive readings like that form a run; a run of at least three is a candidate. Each candidate reports:
+
+- **bearing** — the midpoint of the run's first and last angle
+- **distance** — the run's *closest* reading, not its average. The readings at the edges of a person are the beam half on them and half on the wall behind, and averaging drags the answer toward the wall. At the person_15 spot the run reads 229, 203, 170, 170, 170, 172, 174 — the average is 190, which nothing in the room is.
+
+Runs are tracked as six numbers — first and last bearing and distance, the running minimum, a count — rather than a buffer of readings, so there's no overflow case to handle.
+
+The 40 cm threshold was measured, not chosen. Sweeping it from 5 to 100 cm against the recorded captures: below 15 the sensor's own wobble triggers false alarms in the empty room; above 65 a person gets missed. 40 is the middle of that band.
+
+**Why it reports candidates instead of picking one.** A single sweep can't tell a person from a chair someone moved since calibration — same width, both standing still. What separates them is movement over several sweeps, and detection has no memory between sweeps. So it hands back every candidate (up to four) and leaves the choice to the tracker. Candidates beyond four are counted rather than silently lost.
+
+Only readings the sensor marks valid reach the detector: an invalid reading reports 0 cm, which would otherwise look like something right in front of the lens.
+
+#### Verification
+
+The detector was prototyped in Python against recorded captures, then ported to C, then checked three ways at the same spot:
+
+| | bearing | distance |
+|---|---|---|
+| Recorded capture, Python prototype | 17 ↔ 20 | ~170 cm |
+| Same capture replayed through the C code on a PC | 20.0 | 169 cm |
+| Live on the board | 17/18 ↔ 20/21 | 164–167 cm |
+
+The same two-step wobble shows up in all three: odd and even sweeps see the target from opposite directions, which is the servo lag from the dwell-time table. No detections in the empty room.
+
+Replaying the C code before flashing also caught a bug the board would have hit: if calibration starts partway through a sweep, some angles never get a reading, the median of `0, 0, x` is 0, and those angles go permanently blind. Calibration must start with the head at the edge of the sweep.
+
 ### Telemetry and display
 
 One CSV line per pan step:
@@ -134,6 +182,14 @@ One CSV line per pan step:
 ```
 pan,tilt,distance,temperature,valid
 ```
+
+and, at the end of each sweep, one line per detected candidate:
+
+```
+DET,bearing,distance
+```
+
+The `DET` prefix keeps detection lines distinguishable from readings, so the plotter can't mistake one for the other.
 
 `tools/scanner_plot.py` locates the board by USB vendor and product ID rather than a hardcoded port name, so it runs unchanged on Windows and Linux. Scatter artists are created once and updated per frame rather than clearing the axes, which keeps the redraw cheap.
 
@@ -144,19 +200,27 @@ Points carry a timestamp and fade over 4.5 seconds, so the current sweep stays b
 ```
 Core/
   Inc/
-    servo.h         pan and tilt control interface
+    servo.h         pan and tilt control interface, measured limits
     tfluna.h        LiDAR interface
+    detect.h        detection interface and result type
+    pid.h           PID controller interface
   Src/
     main.c          application loop, scan pattern, timing
-    servo.c         PWM generation, angle limits, homing
+    servo.c         PWM generation, angle limits, pan offset
     tfluna.c        UART receive, frame parser, accessors
+    detect.c        baseline calibration, run finding, candidates
+    pid.c           velocity-form PID (not yet connected)
 tools/
   scanner_plot.py   live polar display
+  scan_data.py      capture loader
+  detect.py         Python detection prototype
+captures/           recorded scans: empty room, standing and walking
+                    person, live board runs
 cmake/
   files.cmake       source list
 ```
 
-Each module keeps its state private and exposes only what callers need. The frame parser and the UART callback are absent from `tfluna.h` — nothing outside the driver has any business feeding bytes to it.
+Each module keeps its state private and exposes only what callers need. The frame parser and the UART callback are absent from `tfluna.h` — nothing outside the driver has any business feeding bytes to it. Likewise `detect.h` exposes four functions and one struct; the baseline, the run being built and the candidate shelf are all private to `detect.c`.
 
 ## Building
 
@@ -182,7 +246,9 @@ Close any serial terminal first — only one program can hold the port.
 
 **Measure at the destination, not the source.** Two dead servos and a dead logic analyzer cost most of a day early on. Voltage present at the rail is not voltage present at the connector, and a conclusion reached by eliminating everything else can still be wrong.
 
-**Calibrate before you build on top.** The servo pulse range, the tilt geometry, and the settling time were all wrong in the original notes, and none of the errors were visible in normal operation. A 16° bearing split between sweep directions only showed up because the same scene was captured twice and compared.
+**Check the port against recorded data before flashing.** The C detector was replayed against the same captures the Python prototype was tested on, before it ever ran on the board. It matched — and the replay turned up a calibration bug that would have left part of the room permanently blind.
+
+**Calibrate before you build on top.** The servo pulse range, the pan zero, the tilt level, and the settling time were all wrong in the original notes, and none of the errors were visible in normal operation. A 16° bearing split between sweep directions only showed up because the same scene was captured twice and compared.
 
 **One branch per state.** The parser bug that survived longest was a condition mixing two questions — "am I still hunting for a header?" and "is this byte a header?" — in one test. When the byte was not a header the whole branch failed and control fell through to the collecting branch, which started assembling a frame from the middle of the previous one.
 
