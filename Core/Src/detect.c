@@ -30,9 +30,6 @@
    a person gets missed. 40 is the middle of that band. */
 #define MIN_DROP_CM 40
 
-/* How many candidates one sweep can hand to the tracker. */
-#define MAX_OBJECTS 4
-
 /* Fewest readings in a row before a run is believed. Shorter = glitch. */
 #define MIN_RUN_LENGTH 3
 

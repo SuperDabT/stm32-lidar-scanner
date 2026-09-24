@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+/* How many candidates one sweep can hand to the tracker. */
+#define MAX_OBJECTS 4
+
 typedef struct{
 
     bool found;
