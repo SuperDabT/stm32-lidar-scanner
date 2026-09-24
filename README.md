@@ -242,14 +242,10 @@ python tools/scanner_plot.py
 
 Close any serial terminal first — only one program can hold the port.
 
-## Notes from the build
-
-**Measure at the destination, not the source.** Two dead servos and a dead logic analyzer cost most of a day early on. Voltage present at the rail is not voltage present at the connector, and a conclusion reached by eliminating everything else can still be wrong.
+## Lessons learned
 
 **Check the port against recorded data before flashing.** The C detector was replayed against the same captures the Python prototype was tested on, before it ever ran on the board. It matched — and the replay turned up a calibration bug that would have left part of the room permanently blind.
 
 **Calibrate before you build on top.** The servo pulse range, the pan zero, the tilt level, and the settling time were all wrong in the original notes, and none of the errors were visible in normal operation. A 16° bearing split between sweep directions only showed up because the same scene was captured twice and compared.
 
 **One branch per state.** The parser bug that survived longest was a condition mixing two questions — "am I still hunting for a header?" and "is this byte a header?" — in one test. When the byte was not a header the whole branch failed and control fell through to the collecting branch, which started assembling a frame from the middle of the previous one.
-
-**Power conversion is the least reliable part of a breadboard.** A buck converter's stiff pins splay the contacts they are pushed into, and every junction in the power path is a friction fit carrying current spikes. Replaced with a direct regulated supply and screw terminals.
