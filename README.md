@@ -62,11 +62,25 @@ Firmware in C on STM32 HAL, no RTOS. Host visualiser in Python.
 | Pan | 0–165 (true bearing) | 90 is straight ahead. Command = bearing + 15. Linear across the range. Held to 165 because bearing 180 is command 195, past the calibrated pulse range, and the servo heated pushing against its stop |
 | Tilt | 89–125 | 111 is level, lower numbers point up. Fixed at level during detection |
 
+Lens height above the floor is 74.7 cm; every tilt calculation below uses it.
+
 ## How it works
+
+Every constant in the firmware was measured on the rig rather than taken from a datasheet or a tutorial. Each section below gives the experiment, the math and the raw numbers behind it.
 
 ### Servo control
 
-TIM2 runs at 90 MHz from APB1. A prescaler of 89 gives one tick per microsecond; ARR of 19999 wraps the counter every 20 ms, producing the 50 Hz frame hobby servos expect. Because one tick is one microsecond, the compare register holds the pulse width directly:
+TIM2 runs at 90 MHz from APB1. A servo wants one pulse every 20 ms, with the pulse width encoding the angle:
+
+```math
+f_\text{tick} = \frac{90\ \text{MHz}}{\text{PSC} + 1} = \frac{90\ \text{MHz}}{90} = 1\ \text{MHz} \quad\Rightarrow\quad \text{PSC} = 89
+```
+
+```math
+T = (\text{ARR} + 1) \cdot 1\ \mu\text{s} = 20\,000\ \mu\text{s} \quad\Rightarrow\quad \text{ARR} = 19\,999
+```
+
+Both carry a "+1" because the counter starts at 0: a counter running 0…89 takes 90 ticks, not 89. Because one tick is one microsecond, the compare register holds the pulse width directly:
 
 ```
 CCR = 500 + (angle / 180) * 2000
@@ -84,16 +98,87 @@ Calibration checked three things:
 
 - **Range** — commanding 0 and 180 should put the beam on a straight line through the pivot. At 500–2500 µs it does.
 - **Linearity** — 90 must land midway between the endpoints, or no single scale factor can be correct.
-- **Offset** — the servo's zero does not agree with the chassis. Command 105 points straight along the base's forward axis, measured with a straightedge against the square base and checked by a second person. `servo_write` adds the 15° internally, so everything above it — scan loop, telemetry, detection — works in true bearings where 90 is straight ahead. (A sweep across a flat wall fits the wall to within 1.5 cm RMS and finds its perpendicular to a tenth of a degree, but only tells you the offset if the wall is known to be square to the base; this one wasn't, which is why the final number came from the straightedge.)
+- **Offset** — handled separately below, because it turned out not to be zero.
+
+#### Pan zero offset
+
+The first attempt swept the head across a flat wall, converted the readings to x/y, and fitted a straight line through them (total least squares: the principal direction of the points' 2×2 covariance matrix). The fit was excellent — 1.5 cm RMS residual over 1106 readings — and put the wall's perpendicular at command 140.4 (141.1 outbound, 139.8 on the return, split by the dwell lag). But that answers where the head faces *that wall*, and the wall wasn't square to the base, so it couldn't give the offset.
+
+The base itself is square, so a straightedge along it marks the true forward axis. The command that lines the head up with it read 103 at first, then 105 when refined and checked by a second person. That's a **+15°** offset. `servo_write` adds it internally, so the scan loop, telemetry and detection all work in true bearings where 90 is straight ahead.
+
+#### Pan travel limit
+
+With the offset applied, true bearing 180 is command 195:
+
+```math
+t_\text{pulse} = 500 + \frac{195}{180} \cdot 2000 = 2667\ \mu\text{s} \qquad (\text{calibrated ceiling: } 2500\ \mu\text{s})
+```
+
+The head physically got there, but the servo base heated up: it was pushing against its internal stop while still being commanded further, so its position error never reached zero. The limit is **true 165**, which is command 180 and exactly 2500 µs.
 
 ### Tilt level
 
-The original notes said tilt 115 was level. It wasn't: a target at 170 cm read 126 cm, because the beam was angled down into the floor before reaching it. Level was re-measured two independent ways against a wall 344 cm away, with the lens 74.7 cm above the floor:
+The original notes said tilt 115 was level. A target at 170 cm read 126 cm, a 26% range error, because the beam was angled down and hitting the bed before it reached the target. Level was re-measured two independent ways.
 
-- **Shortest reading.** A level beam takes the shortest path to a wall, so wall distance is smallest at level. The minimum sits at tilt 111, rising on both sides.
-- **Floor knee.** Tilting down, the beam starts hitting floor before the wall between commands 123 and 124. `atan(74.7 / 344)` puts that 12.2° below level, which gives level at 111.3.
+**The geometry.** With the lens at height $h$ and the beam angled $\theta$ below horizontal, the beam, the vertical drop and the floor form a right triangle. The drop is *opposite* the angle, the beam is the hypotenuse, and the floor run is *adjacent*:
 
-Both give 111, and command units map 1:1 to degrees. 115 had been pointing 4° down.
+```math
+\sin\theta = \frac{h}{d_\text{beam}} \qquad \tan\theta = \frac{h}{d_\text{floor}}
+```
+
+where $d_\text{beam}$ is what the LiDAR reads and $d_\text{floor}$ is the horizontal distance along the floor.
+
+It's $\sin$, not $\cos$, because $\theta$ is measured from the horizontal. Measured from vertical, it would be $\cos$, and the two angles add to 90°.
+
+**Method A: one floor hit.** At tilt command 150 the beam landed on bare floor and read 119 cm:
+
+```math
+\theta = \arcsin\left(\frac{74.7}{119}\right) = 38.9^\circ \qquad \text{level} \approx 150 - 38.9 = 111.1
+```
+
+39 command units produce 38.9° of real tilt, so command units map 1:1 to degrees.
+
+**Method B: a wall and its knee.** The rig pointed at a flat wall 344.3 cm away (laser distance meter), with bare floor in front of it, in a dark room:
+
+| Tilt | Reading (cm) | Hitting |
+|---|---|---|
+| 100 | 355–356 | wall, beam angled up |
+| 105 | 348–350 | wall |
+| **111** | **346–348** | **wall: shortest reading** |
+| 115 | 348–349 | wall |
+| 120 | 358–360 | wall, beam angled down |
+| 122 | 357–358 | wall |
+| **123** | **350–352** | **wall, grazing the floor at its base** |
+| **124** | **321–324** | **floor: the knee** |
+| 125 | 299–301 | floor |
+| 130 | 224–226 | floor |
+
+That one table gives two answers:
+
+- **Shortest path.** A level beam takes the shortest path to a wall, and the reading grows as the beam tilts either way ($d = D / \cos\theta$). The minimum is at **111**.
+- **The knee.** The beam first lands on the floor before the wall between 123 and 124. At that angle it drops exactly 74.7 cm over 344.3 cm:
+
+  ```math
+  \theta_\text{knee} = \arctan\left(\frac{74.7}{344.3}\right) = 12.24^\circ \qquad \text{level} = 123.5 - 12.24 = 111.3
+  ```
+
+The knee is the sharper of the two. Near level, $\cos\theta$ is almost flat (4° off level stretches a 350 cm reading by only about 1 cm), so the minimum alone can't resolve a few degrees. The knee is a cliff: the reading drops 30 cm in one step.
+
+**Result: level is 111.** The two methods agree within a quarter of a degree, and 115 had been pointing 4° down. The tenth of a degree is dropped because the knee is only bracketed to whole command units. (An earlier attempt had seemed to show a non-1:1 mapping; that bearing turned out to point at a window, which the TF-Luna doesn't read reliably, and the point was discarded.)
+
+**How far each tilt can see.** Once the beam angles down, the floor caps its range at $d_\text{floor} = h / \tan\theta$:
+
+| Tilt | Below level | Floor reached at |
+|---|---|---|
+| 112 | 1° | 42.8 m (beyond the 8 m sensor limit) |
+| 113 | 2° | 21.4 m |
+| 115 | 4° | 10.7 m |
+| 116 | 5° | 8.5 m |
+| 120 | 9° | 4.7 m |
+| 123 | 12° | 3.5 m |
+| 125 | 14° | 3.0 m |
+
+So the floor alone doesn't explain the 126 cm reading at 115. The beam was hitting the bed, which sits much closer to lens height than the floor does.
 
 ### Scan pattern
 
@@ -108,7 +193,9 @@ The 50 ms dwell is measured, not guessed. A servo commanded to a new angle is st
 | 50 ms | 2° |
 | 65 ms | 0° |
 
-50 ms is the fastest interval holding the split within one step — the floor, since the true edge always falls between two samples.
+50 ms is the fastest interval holding the split within one step — the floor, since the true edge always falls between two samples. The remaining 2° wobble between sweep directions shows up in every later capture, which is a useful sign that nothing else is moving the bearings.
+
+A related bug came first: the original loop printed the pan angle *after* commanding the next move, so each reading carried the angle the head was heading to. That produced a 16° split. Reporting before commanding fixed it.
 
 ### LiDAR
 
@@ -151,11 +238,30 @@ Detection lives in `detect.c` and has two phases.
 **Watching.** Each new reading is compared to the baseline at its angle. A reading at least 40 cm closer than the empty room is "something there." Consecutive readings like that form a run; a run of at least three is a candidate. Each candidate reports:
 
 - **bearing** — the midpoint of the run's first and last angle
-- **distance** — the run's *closest* reading, not its average. The readings at the edges of a person are the beam half on them and half on the wall behind, and averaging drags the answer toward the wall. At the person_15 spot the run reads 229, 203, 170, 170, 170, 172, 174 — the average is 190, which nothing in the room is.
+- **distance** — the run's *closest* reading, not its average. The readings at the edges of a person are the beam half on them and half on the wall behind, and averaging drags the answer toward the wall. At the 15° test spot the run reads 229, 203, 170, 170, 170, 172, 174. The average is 184 cm, which nothing in the room is; the minimum is 170, where the person stood.
 
-Runs are tracked as six numbers — first and last bearing and distance, the running minimum, a count — rather than a buffer of readings, so there's no overflow case to handle.
+Because readings are evenly spaced 2° apart, the average of every bearing in a run equals the average of just the first and last. So runs are tracked as six numbers — first and last bearing and distance, the running minimum, a count — rather than a buffer of readings, and there's no overflow case to handle.
 
-The 40 cm threshold was measured, not chosen. Sweeping it from 5 to 100 cm against the recorded captures: below 15 the sensor's own wobble triggers false alarms in the empty room; above 65 a person gets missed. 40 is the middle of that band.
+The 40 cm threshold was measured, not chosen, by sweeping it against recorded captures (an empty room, and a person standing at two known bearings):
+
+| Threshold | Empty room: false alarms | Person at 15° found | Person at 95° found |
+|---|---|---|---|
+| 5 cm | 22 sweeps | 26/26 | 23/24 |
+| 10 cm | 10 sweeps | 26/26 | 23/24 |
+| 15–60 cm | **0** | **26/26** | **23/24** |
+| 65 cm | 0 | 26/26 | 22/24 |
+| 70 cm | 0 | 26/26 | 1/24 |
+| 80 cm | 0 | 14/26 | 1/24 |
+
+Below 15 cm the sensor's own wobble (about 3 cm on a still wall) trips it. Above 65 cm the weaker signal is missed: at 95° the person stood 65 cm in front of the wall. 40 cm sits in the middle of the band, with room on both sides.
+
+**Width** (next step on the board, done in the Python prototype) is measured in centimetres rather than angles. The same person fills 6–11 angles at 170 cm but about half that at twice the distance, so angle counts lie about size. Converting the run's two ends to floor coordinates and measuring between them gives a size that doesn't depend on range — 43 cm and 47 cm median at the two test spots:
+
+```math
+x = d\cos\phi \qquad y = d\sin\phi \qquad w = \sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}
+```
+
+where $\phi$ is the bearing and $d$ the distance at each end of the run.
 
 **Why it reports candidates instead of picking one.** A single sweep can't tell a person from a chair someone moved since calibration — same width, both standing still. What separates them is movement over several sweeps, and detection has no memory between sweeps. So it hands back every candidate (up to four) and leaves the choice to the tracker. Candidates beyond four are counted rather than silently lost.
 
@@ -173,7 +279,17 @@ The detector was prototyped in Python against recorded captures, then ported to 
 
 The same two-step wobble shows up in all three: odd and even sweeps see the target from opposite directions, which is the servo lag from the dwell-time table. No detections in the empty room.
 
-Replaying the C code before flashing also caught a bug the board would have hit: if calibration starts partway through a sweep, some angles never get a reading, the median of `0, 0, x` is 0, and those angles go permanently blind. Calibration must start with the head at the edge of the sweep.
+Replaying the C code before flashing also caught a bug the board would have hit: if calibration starts partway through a sweep, some angles never get a reading, the median of `0, 0, x` is 0, and those angles go permanently blind. On a replay that started mid-sweep, the person at 95° went from 23/24 to 0/24. Calibration must start with the head at the edge of the sweep. The median function itself was checked exhaustively on the host: every combination of three values from 0 to 40, plus edge cases, 68,935 cases with no failures.
+
+#### Why tracking needs a narrower sweep
+
+A slow walk across a measured 1.417 m stretch, about 155 cm from the rig, should span $2\arctan(0.7085 / 1.55) = 49.1^\circ$; it was observed spanning 52°, an independent check of the pan offset and distances. But 14–15 passes in 90 s is one every ~6.2 s, while a full sweep took 4.55 s:
+
+```math
+\frac{4.55\ \text{s}}{6.2\ \text{s}} \approx 0.73 \ \text{of a crossing between two looks}
+```
+
+The scanner samples a walking person less than twice per crossing, so their position appears to jump around. That's the measured reason the tracker will narrow its sweep to a window around the target once it's found.
 
 ### Telemetry and display
 
