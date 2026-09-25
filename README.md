@@ -158,9 +158,9 @@ That one table gives two answers:
 - **Shortest path.** A level beam takes the shortest path to a wall, and the reading grows as the beam tilts either way ($d = D / \cos\theta$). The minimum is at **111**.
 - **The knee.** The beam first lands on the floor before the wall between 123 and 124. At that angle it drops exactly 74.7 cm over 344.3 cm:
 
-  ```math
-  \theta_\text{knee} = \arctan\left(\frac{74.7}{344.3}\right) = 12.24^\circ \qquad \text{level} = 123.5 - 12.24 = 111.3
-  ```
+```math
+\theta_\text{knee} = \arctan\left(\frac{74.7}{344.3}\right) = 12.24^\circ \qquad \text{level} = 123.5 - 12.24 = 111.3
+```
 
 The knee is the sharper of the two. Near level, $\cos\theta$ is almost flat (4° off level stretches a 350 cm reading by only about 1 cm), so the minimum alone can't resolve a few degrees. The knee is a cliff: the reading drops 30 cm in one step.
 
