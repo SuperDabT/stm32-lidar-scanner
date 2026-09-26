@@ -13,6 +13,7 @@
 #include "servo.h"
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
 
 /* ---- Settings ---------------------------------------------------------- */
 
@@ -59,6 +60,11 @@ static uint16_t    dropped_counter = 0;  /* runs lost because all slots were ful
 
 /* ---- Helpers ------------------------------------------------------------ */
 
+typedef struct{
+float x;
+float y;
+}to_xy_t;
+
 /* Middle value of three. Sorts them by swapping, then b is the middle. */
 static uint16_t median3(uint16_t a, uint16_t b, uint16_t c) {
   uint16_t temp_val = 0;
@@ -69,15 +75,34 @@ static uint16_t median3(uint16_t a, uint16_t b, uint16_t c) {
   return b;
 }
 
-/* A run just ended. If it was long enough, turn it into a candidate and
-   put it on the shelf. Either way, start fresh for the next run.
-   Called from two places: a "not close" reading, and the end of a sweep. */
+
+
+
+static to_xy_t convert_xy (uint16_t bearing,uint16_t distance){
+  to_xy_t point;
+
+  point.x= distance*cosf((bearing*((float)M_PI/180)));
+  point.y= distance*sinf((bearing*((float)M_PI/180)));
+
+  return point;
+}
+
+
+
 static void close_run(void) {
   if (readings_count >= MIN_RUN_LENGTH) {       /* real, not a glitch */
-    if (object_count < MAX_OBJECTS) {           /* room on the shelf */
+    if (object_count < MAX_OBJECTS) { 
+      
+      to_xy_t first_point=convert_xy(first_bearing,first_dist);
+      to_xy_t last_point=convert_xy(last_bearing,last_dist);        
+      
+      float dx=last_point.x-first_point.x;
+      float dy=last_point.y-first_point.y;
+
+      /* room on the shelf */
       objects[object_count].found    = true;
       objects[object_count].distance = min_dist;
-      objects[object_count].width    = 0;       /* TODO: needs to_xy */
+      objects[object_count].width    = (uint16_t)sqrtf((dx*dx)+(dy*dy));      
       objects[object_count].bearing  = (last_bearing + first_bearing) / 2.0f; /* middle */
       object_count++;
     } else {
@@ -86,6 +111,8 @@ static void close_run(void) {
   }
   readings_count = 0;                           /* no run going anymore */
 }
+
+
 
 /* ---- Public functions (declared in detect.h) --------------------------- */
 
