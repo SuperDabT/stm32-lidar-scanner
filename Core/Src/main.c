@@ -106,7 +106,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 servo_init();
-HAL_Delay(10000); 
+HAL_Delay(5000); 
 tfluna_init();
 
 
@@ -229,9 +229,10 @@ tfluna_init();
           sus_objects=detect_result(detections, MAX_OBJECTS);
 
           for(uint8_t i=0;i<sus_objects;i++){
-            printf("DET,%d,%d\r\n",
+            printf("DET,%d,%d,%u\r\n",
             (int)detections[i].bearing,
-            detections[i].distance);
+            detections[i].distance,
+            detections[i].width);
           }
         }
     }
