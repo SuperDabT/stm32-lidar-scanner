@@ -106,7 +106,7 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 servo_init();
-HAL_Delay(5000); 
+HAL_Delay(8000); 
 tfluna_init();
 
 
@@ -183,9 +183,14 @@ tfluna_init();
 
 
         if (valid) {
+          uint16_t  true_bearing=pan_angle;
+
+        if(pan_step<0){
+          true_bearing=pan_angle+PAN_DOWN_CORR_DEG; 
+        }
 
           
-          detect_feed((int)pan_angle, distance);
+          detect_feed((int)true_bearing, distance);
         }
 
         pan_angle += pan_step;
