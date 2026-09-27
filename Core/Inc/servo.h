@@ -11,6 +11,7 @@
 #define PAN_MAX 165.0f /* 180+15 causes for overheating therefore 165 redemmed to be the safer option.*/ 
 #define PAN_MIN 0.0f
 #define PAN_STEP_DEG 2.0f
+#define PAN_DOWN_CORR_DEG 3 /* "down sweeps read ~3° low, measured in bearing_run1/2.txt, see #1". */
  /* True 0 -> command 15. */
 
 #define TILT_MIN   89.0f   /* 22 deg above level. */
