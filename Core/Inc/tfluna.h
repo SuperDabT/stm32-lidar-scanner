@@ -4,12 +4,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+typedef struct{
 
-uint16_t tfluna_distance(void);
+    bool valid;
+    uint16_t distance;
 
 
 
-bool tfluna_valid(void);
+}tfluna_reading_t;
+
+
+tfluna_reading_t tfluna_read(void);
 
 void tfluna_init(void);
 

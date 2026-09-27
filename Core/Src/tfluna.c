@@ -12,16 +12,27 @@ static volatile bool     last_valid    = false;
 static volatile float    last_temp     = 0.0f;
 static uint8_t           rx_byte;
 
-uint16_t tfluna_distance(void) {
+static uint16_t tfluna_distance(void) {
     return last_distance;
 }
 
-bool tfluna_valid(void) {
+static bool tfluna_valid(void) {
     return last_valid;
 }
 
 float tfluna_temperature(void) {
     return last_temp;
+}
+
+tfluna_reading_t tfluna_read(void){
+
+    tfluna_reading_t read;
+    __disable_irq();
+    read.distance=tfluna_distance();
+    read.valid=tfluna_valid();
+    __enable_irq();
+
+    return read;
 }
 
 /* Byte-at-a-time frame parser for the TF-Luna's nine-byte format:

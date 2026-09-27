@@ -135,6 +135,7 @@ tfluna_init();
 
     bool reversed = false;
 
+
     /* 50 ms is measured, not chosen. A servo commanded to a new angle is
        still travelling when the next reading arrives, so the reading
        belongs to a position the code has already left. The error shows up
@@ -166,9 +167,12 @@ tfluna_init();
   }
     else{
 
-      uint16_t distance=tfluna_distance();
-      bool valid=tfluna_valid();
+        tfluna_reading_t current_reading= tfluna_read();
 
+      
+      uint16_t distance=current_reading.distance;
+      bool valid=current_reading.valid;
+      
 
         /* Report before commanding. At this point pan_angle is still the
            angle the head has been parked at for the last 50 ms, so the
