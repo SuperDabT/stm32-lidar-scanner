@@ -45,6 +45,7 @@
 #define TEMP_TRIP_C        60.0f   // Halt scanning at or above this
 #define TEMP_CLEAR_C       55.0f   // Resume scanning at or below this
 #define WARN_INTERVAL_MS   1000    // How often to print the halt warning
+#define SCAN_TILT 0   /* 1 = tilt raster on, 0 = level-only scanning */
 
 
 /* USER CODE END PD */
@@ -106,7 +107,6 @@ int main(void)
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
 servo_init();
-HAL_Delay(8000); 
 tfluna_init();
 
 
@@ -129,7 +129,9 @@ tfluna_init();
     static uint32_t warn_last=0;
 
     static float tilt_angle = TILT_LEVEL;
+    #if SCAN_TILT
     static float tilt_step  = TILT_STEP_DEG;
+    #endif
 
     bool reversed = false;
 
@@ -212,20 +214,21 @@ tfluna_init();
            stepping both axes together. Step stays at 3 degrees: the beam
            is about 2 wide, so a larger step would leave unscanned gaps
            between rows. */
-        // if (reversed) {
-        //     servo_write(tilt_angle, 't');
+           #if SCAN_TILT
+        if (reversed) {
+          servo_write(tilt_angle, 't');
 
-        //     tilt_angle += tilt_step;
-        //     if (tilt_angle >= SCAN_TILT_MAX) {
-        //       tilt_angle=SCAN_TILT_MAX;
-        //       tilt_step = -tilt_step;
-        //     }
-        //     if (tilt_angle <= SCAN_TILT_MIN) {
-        //       tilt_angle=SCAN_TILT_MIN;
-        //       tilt_step = -tilt_step;
-
-        //     }
-        // }
+          tilt_angle += tilt_step;
+          if (tilt_angle >= SCAN_TILT_MAX) {
+            tilt_angle = SCAN_TILT_MAX;
+            tilt_step = -tilt_step;
+          }
+          if (tilt_angle <= SCAN_TILT_MIN) {
+            tilt_angle = SCAN_TILT_MIN;
+            tilt_step = -tilt_step;
+          }
+        }
+        #endif
         if(reversed){
           detect_sweep_end();
           detection_t detections[MAX_OBJECTS];
