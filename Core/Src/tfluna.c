@@ -85,10 +85,12 @@ static void tfluna_feed(uint8_t byte) {
 
                 last_distance = d;
 
-                /* Amplitude below 100 means too little return signal to
-                   trust; 65535 means the sensor saturated. A distance of 0
-                   means it could not measure, not that nothing is there. */
-                last_valid = (amp >= 100) && (amp != 65535)
+                /* Amp below 100: too little return signal to trust.
+                   Amp 32768 and up (top bit set): ambient light is blinding
+                   the receiver, e.g. sunlight (TF-Luna manual, 6.4).
+                   A distance of 0 means it could not measure, not that
+                   nothing is there. */
+                last_valid = (amp >= 100) && (amp <= 32768)
                              && (d >= 10) && (d <= 800);
 
                 last_temp = t_raw / 8.0f - 256.0f;
