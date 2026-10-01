@@ -2,12 +2,34 @@
 #include "detect.h"
 #include <stdint.h>
 
-#define PERSON_MIN_WIDTH_CM 20
+#define PERSON_MIN_WIDTH_CM 20 /* Not 25: a person walking against the sweep
+                                   direction looks narrower (23-24 cm seen in
+                                   person_walking_slow.csv). Still well above
+                                   noise blobs like chair legs (~5-15 cm). */
 #define PERSON_MAX_WIDTH_CM 80
+#define CONFIRM_WINDOW 4
+
+#define HISTORY_MASK 0x0F  /* keep the 4 newest looks (bits 0-3) */
 
 static track_t target;
 
+static void push_look(bool seen){
+    target.look_history<<=1;
+    target.look_history|=seen;
+    target.look_history&=HISTORY_MASK;
+}
 
+static uint8_t count_hits(void){
+    uint8_t hits=0;;
+    uint8_t mask=0;
+    for(int i=0;i<4;i++){
+        mask=1<<i;
+        if((target.look_history&mask)>0){
+            chits++;
+        }
+    }
+    return hits;
+}
 
 
 
