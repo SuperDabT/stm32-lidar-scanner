@@ -16,6 +16,13 @@ typedef struct{
 
 }detection_t;
 
+typedef struct{
+float x;
+float y;
+}to_xy_t;
+
+to_xy_t convert_xy (float bearing,uint16_t distance);
+
 
 void detect_calibrate(void);
 
