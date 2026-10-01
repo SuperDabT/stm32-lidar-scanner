@@ -60,10 +60,7 @@ static uint16_t    dropped_counter = 0;  /* runs lost because all slots were ful
 
 /* ---- Helpers ------------------------------------------------------------ */
 
-typedef struct{
-float x;
-float y;
-}to_xy_t;
+
 
 /* Middle value of three. Sorts them by swapping, then b is the middle. */
 static uint16_t median3(uint16_t a, uint16_t b, uint16_t c) {
@@ -78,7 +75,7 @@ static uint16_t median3(uint16_t a, uint16_t b, uint16_t c) {
 
 
 
-static to_xy_t convert_xy (uint16_t bearing,uint16_t distance){
+to_xy_t convert_xy (float bearing,uint16_t distance){
   to_xy_t point;
 
   point.x= distance*cosf((bearing*((float)M_PI/180)));
