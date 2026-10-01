@@ -22,6 +22,8 @@ float vx;// Unit: cm/s
 
 track_state_t target_state;
 
+uint8_t look_history;
+
 uint32_t seen_at_ms;
 
 }track_t;
