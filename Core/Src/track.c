@@ -25,7 +25,7 @@ static uint8_t count_hits(void){
     for(int i=0;i<4;i++){
         mask=1<<i;
         if((target.look_history&mask)>0){
-            chits++;
+            hits++;
         }
     }
     return hits;
