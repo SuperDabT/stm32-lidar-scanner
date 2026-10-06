@@ -5,7 +5,9 @@ import time
 import numpy as np
 import csv
 import sys
+from typing import cast
 from matplotlib.animation import FuncAnimation
+from matplotlib.projections.polar import PolarAxes
 
 from serial.tools import list_ports
 
@@ -33,6 +35,26 @@ def find_stm32():
             return port.device
     return None
 
+def draw_layer(objects,time_now,glowing,coring):
+    angles = [p[0] for p in objects]
+    dists  = [p[1] for p in objects]
+    alphas = [1.0 - (time_now - p[-1]) / 4.5 for p in objects]
+    
+        # Same positions for both layers, so build the Nx2 array once.
+    if objects:
+            coords = np.column_stack([angles, dists])
+            # Soft phosphor glow beneath a brighter core, both using the same
+            # age-based fade so the bloom decays with the point.
+            glowing.set_offsets(coords)
+            glowing.set_alpha([a * 0.15 for a in alphas])
+            coring.set_offsets(coords)
+            coring.set_alpha(alphas)
+    else: 
+            glowing.set_offsets(np.empty((0,2)))
+            coring.set_offsets(np.empty((0,2)))
+    
+    
+
 
 def update(frame):
     now = time.time()
@@ -57,6 +79,13 @@ def update(frame):
             if not line:
                 continue
             parts = line.split(',')
+            if line.startswith('DET,'):
+                bearing=int(parts[1])
+                distance=int(parts[2])
+                width=int(parts[3])
+                detections.append((math.radians(bearing),distance,width,now))
+                continue
+
             if len(parts) != 5:
                 continue
             try:
@@ -67,26 +96,18 @@ def update(frame):
                 continue
             points.append((math.radians(pan), dist, now))
 
+
     points[:] = [p for p in points if now - p[2] < 4.5]
+    detections[:]=[d for d in detections if now-d[3]<4.5]
+    
+    draw_layer(points,now,glow,core)
+    draw_layer(detections,now,det_glow,det_core)
 
-    angles = [p[0] for p in points]
-    dists  = [p[1] for p in points]
-    alphas = [1.0 - (now - p[2]) / 4.5 for p in points]
+    return(glow,core,det_glow,det_core)
 
-    # Same positions for both layers, so build the Nx2 array once.
-    if points:
-        coords = np.column_stack([angles, dists])
-        # Soft phosphor glow beneath a brighter core, both using the same
-        # age-based fade so the bloom decays with the point.
-        glow.set_offsets(coords)
-        glow.set_alpha([a * 0.15 for a in alphas])
-        core.set_offsets(coords)
-        core.set_alpha(alphas)
-    else: 
-        glow.set_offsets(np.empty((0,2)))
-        core.set_offsets(np.empty((0,2)))
 
-    return (glow, core)
+
+   
 
 
 
@@ -103,10 +124,11 @@ else:
     ser= serial.Serial(port,115200,timeout=1)
 
 points=[]
+detections=[]
          
 fig = plt.figure(facecolor='#020402', figsize=(8, 8))
 fig.canvas.mpl_connect('key_press_event',on_key)
-ax = fig.add_subplot(projection='polar', facecolor='#020402')
+ax = cast(PolarAxes,fig.add_subplot(projection='polar', facecolor='#020402'))
 ax.set_facecolor('#020402')
 ax.set_title('LIDAR SCAN', color='#39FF6A', fontsize=12, fontweight='bold',
             fontfamily='monospace', pad=18)
@@ -121,6 +143,10 @@ ax.set_rlabel_position(135)
 # Created once, empty. glow first so it draws underneath core.
 glow = ax.scatter([], [], s=60, color='#04C334', edgecolors='none')
 core = ax.scatter([], [], s=6,  color='#39FF6A', edgecolors='none')
+
+det_glow=ax.scatter([], [], s=100, color='#B3001B', edgecolors='none')
+det_core=ax.scatter([], [], s=12, color='#FF3B3B', edgecolors='none')
+
 ani = FuncAnimation(fig, update, interval=50, blit=True, cache_frame_data=False)
 plt.show() 
 
