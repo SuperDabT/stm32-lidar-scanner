@@ -86,9 +86,17 @@ to_xy_t convert_xy (float bearing,uint16_t distance){
   return point;
 }
 
+detection_t detect_latest(void){
+  if(object_count==0){
+    detection_t temporary;
+    temporary.found=false;
+    return temporary;
+  }
+  return objects[object_count-1];
+}
 
-
-static void close_run(void) {
+static bool close_run(void) {
+  bool saved=false;
   if (readings_count >= MIN_RUN_LENGTH) {       /* real, not a glitch */
     if (object_count < MAX_OBJECTS) { 
       
@@ -105,11 +113,13 @@ static void close_run(void) {
       objects[object_count].bearing  = (last_bearing + first_bearing) / 2.0f; /* middle */
       objects[object_count].time_stamp_ms=first_time + (last_time-first_time)/2;
       object_count++;
+      saved=true;
     } else {
-      dropped_counter++;                        /* shelf full, count the loss */
+      dropped_counter++;                       /* shelf full, count the loss */
     }
   }
-  readings_count = 0;                           /* no run going anymore */
+  readings_count = 0;  
+  return saved;                         /* no run going anymore */
 }
 
 
@@ -128,17 +138,17 @@ void detect_calibrate(void) {
 }
 
 /* Called by main.c once per reading, every 50 ms. */
-void detect_feed(uint16_t bearing, uint16_t distance,uint32_t time_ms) {
+bool detect_feed(uint16_t bearing, uint16_t distance,uint32_t time_ms) {
   /* Turn the angle into a shelf slot: 0 → 0, 2 → 1, 4 → 2 ... */
   uint16_t slot = (uint16_t)((bearing - PAN_MIN) / PAN_STEP_DEG);
   if (slot >= PAN_SLOTS) {
-    return;                                     /* off the end: reject, don't corrupt memory */
+    return false;                                     /* off the end: reject, don't corrupt memory */
   }
 
   if (calibrating) {
     /* Learning: write this reading into the current sweep's column. */
     if (sweep_counter >= BASELINE_SWEEPS) {
-      return;
+      return false;
     }
     background[slot][sweep_counter] = distance;
 
@@ -165,9 +175,11 @@ void detect_feed(uint16_t bearing, uint16_t distance,uint32_t time_ms) {
 
     } else {
       /* Not close: whatever run was going just ended. */
-      close_run();
+      bool valid= close_run();
+      return valid;
     }
   }
+  return false;
 }
 
 /* Called by main.c when the head turns around at either end. */
