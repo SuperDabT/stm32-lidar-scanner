@@ -13,6 +13,7 @@ typedef struct{
     uint16_t distance;
     uint16_t width;
     float bearing;
+    uint32_t time_stamp_ms;
 
 }detection_t;
 
@@ -26,7 +27,7 @@ to_xy_t convert_xy (float bearing,uint16_t distance);
 
 void detect_calibrate(void);
 
-void detect_feed(uint16_t bearing,uint16_t distance);
+void detect_feed(uint16_t bearing,uint16_t distance,uint32_t time_ms);
 
 uint8_t detect_result (detection_t detection_array[], uint8_t max_slots);
 
