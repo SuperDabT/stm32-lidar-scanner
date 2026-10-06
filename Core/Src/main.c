@@ -196,7 +196,7 @@ tfluna_init();
         }
 
           
-          detect_feed((int)true_bearing, distance);
+          detect_feed((int)true_bearing, distance,HAL_GetTick());
         }
 
         pan_angle += pan_step;

@@ -51,6 +51,8 @@ static uint16_t last_bearing;
 static uint16_t last_dist;
 static uint16_t min_dist;            /* closest point: ignores the half-on-the-wall edges */
 static uint8_t  readings_count = 0;  /* 0 means no run is going */
+static uint32_t first_time;
+static uint32_t last_time;
 
 /* ---- Finished runs, waiting for main.c to collect them ------------------ */
 
@@ -101,6 +103,7 @@ static void close_run(void) {
       objects[object_count].distance = min_dist;
       objects[object_count].width    = (uint16_t)sqrtf((dx*dx)+(dy*dy));      
       objects[object_count].bearing  = (last_bearing + first_bearing) / 2.0f; /* middle */
+      objects[object_count].time_stamp_ms=first_time + (last_time-first_time)/2;
       object_count++;
     } else {
       dropped_counter++;                        /* shelf full, count the loss */
@@ -125,7 +128,7 @@ void detect_calibrate(void) {
 }
 
 /* Called by main.c once per reading, every 50 ms. */
-void detect_feed(uint16_t bearing, uint16_t distance) {
+void detect_feed(uint16_t bearing, uint16_t distance,uint32_t time_ms) {
   /* Turn the angle into a shelf slot: 0 → 0, 2 → 1, 4 → 2 ... */
   uint16_t slot = (uint16_t)((bearing - PAN_MIN) / PAN_STEP_DEG);
   if (slot >= PAN_SLOTS) {
@@ -150,9 +153,11 @@ void detect_feed(uint16_t bearing, uint16_t distance) {
         first_bearing = bearing;
         first_dist    = distance;
         min_dist      = distance;
+        first_time    =time_ms;
       }
       last_bearing = bearing;                   /* always the most recent */
       last_dist    = distance;
+      last_time    =time_ms;
       if (distance < min_dist) {
         min_dist = distance;                    /* keep the closest */
       }
