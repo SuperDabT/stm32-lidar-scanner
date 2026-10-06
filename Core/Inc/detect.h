@@ -24,10 +24,11 @@ float y;
 
 to_xy_t convert_xy (float bearing,uint16_t distance);
 
+detection_t detect_latest(void);
 
 void detect_calibrate(void);
 
-void detect_feed(uint16_t bearing,uint16_t distance,uint32_t time_ms);
+bool detect_feed(uint16_t bearing,uint16_t distance,uint32_t time_ms);
 
 uint8_t detect_result (detection_t detection_array[], uint8_t max_slots);
 

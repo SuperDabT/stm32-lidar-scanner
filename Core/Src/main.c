@@ -196,9 +196,16 @@ tfluna_init();
         }
 
           
-          detect_feed((int)true_bearing, distance,HAL_GetTick());
-        }
+          bool run_closed=detect_feed((int)true_bearing, distance,HAL_GetTick());
 
+          if (run_closed) {
+            detection_t newest_detection = detect_latest();
+            if (newest_detection.found) {
+              printf("DET,%d,%d,%u\r\n", (int)newest_detection.bearing,
+                     newest_detection.distance, newest_detection.width);
+            }
+          }
+        }
         pan_angle += pan_step;
         servo_write(pan_angle, 'p');
 
