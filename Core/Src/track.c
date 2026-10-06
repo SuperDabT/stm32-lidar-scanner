@@ -20,7 +20,7 @@ static void push_look(bool seen){
 }
 
 static uint8_t count_hits(void){
-    uint8_t hits=0;;
+    uint8_t hits=0;
     uint8_t mask=0;
     for(int i=0;i<4;i++){
         mask=1<<i;
